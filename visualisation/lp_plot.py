@@ -1,16 +1,10 @@
 ## Imports
 from cvxopt         import matrix
-
-import numpy                          as np
-import matplotlib.pyplot              as plt
-from matplotlib.patches import Polygon
-from matplotlib.collections import PatchCollection
-import matplotlib
-
+import numpy as np
 
 ## Import test function
-from lp_function import objective, constraints
-from linear_constraints_contour import linear_constraints_contour
+from visualisationlp_function                 import objective, constraints
+from visualisation.linear_constraints_contour import linear_constraints_contour
 
 ## Main function
 def driver():

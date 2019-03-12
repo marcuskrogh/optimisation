@@ -1,11 +1,12 @@
 ## Imports
 from cvxopt         import matrix
 from cvxopt.lapack  import gesv
+
 import numpy as np
 
 ## Import test function
-from qp_function import objective, constraints
-from linear_constraints_contour import linear_constraints_contour
+from visualisation.qp_function                import objective, constraints
+from visualisation.linear_constraints_contour import linear_constraints_contour
 
 ## Main function
 def driver():
