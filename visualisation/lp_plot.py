@@ -3,7 +3,7 @@ from cvxopt         import matrix
 import numpy as np
 
 ## Import test function
-from visualisationlp_function                 import objective, constraints
+from visualisation.lp_function                import objective, constraints
 from visualisation.linear_constraints_contour import linear_constraints_contour
 
 ## Main function
@@ -16,13 +16,13 @@ def driver():
     N = 100
 
     ## Define x-region
-    x_min, x_max = -5, 10
+    x_min, x_max =  0, 5
     x_int  = x_max-x_min
     x_step = x_int/N
     x = matrix(np.arange( x_min, x_max+x_step, x_step ))
 
     ## Define y-region
-    y_min, y_max = -5, 10
+    y_min, y_max =  0, 6
     y_int = y_max-y_min
     y_step = y_int/N
     y = matrix(np.arange( y_min, y_max+y_step, y_step ))

@@ -1,7 +1,7 @@
 ## CVXOPT import
 import cvxopt
 from cvxopt                       import matrix
-from cvxopt.solvers               import qp, lp, options
+from cvxopt.solvers               import qp, options
 options['show_progress'] = False
 
 ## QP related functions
@@ -20,8 +20,8 @@ import matplotlib.pyplot as plt
 ############################################################################
 def main():
     ## Initialisation of QP (Inequality constrained)
-    H, g    = objective()
-    C, d    = constraints()
+    H, g = objective()
+    C, d = constraints()
 
     ## Visualisation of QP with constraints
     fig, ax = driver()
