@@ -10,6 +10,7 @@ from visualisation.qp_plot        import driver
 
 ## QP Solver - primal active set
 from solvers.active_set_primal_qp import active_set
+from solvers.interior_point_qp    import interior_point
 
 ## Pyplot for visualisation
 import matplotlib.pyplot as plt
@@ -26,6 +27,12 @@ def main():
     ## Visualisation of QP with constraints
     fig, ax = driver()
 
+    ## Solution via interior point algorithm
+    A = matrix(C[:,0])
+    b = matrix(d[0])
+    interior_point(H,g,A,b,C[:,:4],d[:4],[1,1],[1],[1,1,1,1],[1,1,1,1])
+
+    """
     ## Solution via CVXOPT
     x_opt_cvxopt = qp( H, g, -C.T, -d )['x']
     print( 'Optimal solution (from CVXOpt): \n', x_opt_cvxopt )
@@ -43,6 +50,7 @@ def main():
     ax.plot( x_opt_cvxopt[0], x_opt_cvxopt[1], 'k2' , markersize=10 )
     ax.plot( X[:,0]         , X[:,1]         , 'r1-', markersize=10 )
     plt.show()
+    """
 
 
 ## Execution

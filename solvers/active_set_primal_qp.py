@@ -198,17 +198,20 @@ def active_set(      \
 
             Solve the equality constrained QP:
 
-                min  1/2 p_k' H p_k + g_k' p_k
-                s.t. A_bar' p_k = 0
+                min     1/2 p_k' H p_k + g_k' p_k
+                p_k
 
-            to compute the step p_k = x - x_k
+                s.t.    A_bar' p_k = 0,
+
+            where p_k is the step direction, such that the next iterate
+            x_{k+1} = x_k + alpha * p_k, where 0 <= alpha <= 1.
         """
         ## Setup sub-problem
         g_k   = H*x_k + g
         if len(W_k) == 0:
             C_W = matrix( 0.0, (n,0) )
         else:
-            C_W   = matrix( [[C[j,i] for i in W_k] for j in range(n)] ).T
+            C_W   = matrix( [ [C[:,i]] for i in W_k ] )
 
         ## Define equality constrants including Working set (W_k)
         A_bar = matrix( [ [A], [C_W] ] )
@@ -241,16 +244,15 @@ def active_set(      \
             ## Construct inactive constraints
             nW_k = matrix( list( filter( \
                 lambda i: i not in W_k, range(mi) ) ) )
-            nC_W    = matrix( [ [ C[j,i] for i in nW_k ] \
-                for j in range(n) ] )
+            nC_W    = matrix( [ [C[:,i]] for i in nW_k ] )
             nd_W    = matrix( [ d[i] for i in nW_k ] )
 
             ## Line search parameter. Compute from 16.41
             res = []
             for i in range(len(nW_k)):
-                tmp_ = nC_W[i,:]*p_k
+                tmp_ = nC_W[:,i].T*p_k
                 if tmp_[0] < 0.0:
-                    tmp_ = (nd_W[i] - nC_W[i,:]*x_k)[0] / tmp_[0]
+                    tmp_ = (nd_W[i] - nC_W[:,i].T*x_k)[0] / tmp_[0]
                     res.append( tmp_ )
                 else:
                     res.append( np.inf )
