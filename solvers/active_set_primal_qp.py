@@ -17,8 +17,8 @@ def kktsolver( H, g, A, b, ):
 
     ## Setup of KKT-system
     O   = matrix( 0.0, (m, m) )                # Zeros for KKT matrix
-    KKT = matrix( [ [ H, -A.T ], [ -A, O ] ] ) # KKT matrix
-    res = matrix( [ -g, -b ] )                 # Right-hand side
+    KKT = matrix( [ [ H, A.T ], [ A, O ] ] ) # KKT matrix
+    res = matrix( [ g, b ] )                 # Right-hand side
     I   = matrix( range(n+m) )                 # Identity for LDL
 
     ## LDL-decomposition
@@ -28,7 +28,7 @@ def kktsolver( H, g, A, b, ):
     cvxopt.lapack.sytrs( KKT, I, res )
 
     ## Solution
-    x       = res[:n]   # Optimisation variable
+    x       = -res[:n]  # Optimisation variable
     lambda_ = res[n:]   # Lagrange multipliers
 
     return x, lambda_
