@@ -14,20 +14,21 @@ def driver():
     A, b = constraints()
 
     ## Grid definition
-    N = 100
+    Nx = 500
+    Ny = 500
 
     ## Define x-region
-    x_min, x_max = -5, 10
+    x_min, x_max =  0, 5
     x_int  = x_max-x_min
-    x_step = x_int/N
-    x = matrix(np.arange( x_min, x_max+x_step, x_step ))
+    x_step = x_int/Nx
+    x = matrix( np.arange( x_min, x_max+x_step, x_step ) )
     nx, _ = x.size
 
     ## Define y-region
-    y_min, y_max = -5, 10
+    y_min, y_max =  0, 6
     y_int = y_max-y_min
-    y_step = y_int/N
-    y = matrix(np.arange( y_min, y_max+y_step, y_step ))
+    y_step = y_int/Ny
+    y = matrix( np.arange( y_min, y_max+y_step, y_step ) )
     ny, _ = y.size
 
     ## Define mesh
@@ -36,14 +37,18 @@ def driver():
     Y = matrix(Y)
 
     ## Define objective function
-    obj_fun = lambda x: x.T*H*x + g.T*x
+    #clear
+    #obj_fun = lambda x: (x[0]**2 + x[1] - 7)**2 + (x[0] + x[1]**2 - 11)**2
+    obj_fun = lambda x: 1/2*x.T*H*x + g.T*x
 
     ## Compute contours
-    Z = matrix( 0.0, (nx,ny) )
-    for i in range(ny):
-        for j in range(nx):
-            x_ = matrix( [ x[j], y[i] ] )
+    Z = matrix( 0.0, (ny,nx) )
+    for i in range(nx):
+        for j in range(ny):
+            x_ = matrix( [ X[j,i], Y[j,i] ] )
             Z[j,i] = obj_fun( x_ )
 
     ## Plot linear constraints in contour plot
-    fig, ax = linear_constraints_contour( X, Y, Z, A, b, 25, True )
+    fig, ax = linear_constraints_contour( X, Y, Z, A, b, 40 )
+
+    return fig, ax

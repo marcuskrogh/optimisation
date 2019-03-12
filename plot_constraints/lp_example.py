@@ -42,4 +42,6 @@ def driver():
     Z = g[0]*X + g[1]*Y
 
     ## Plot linear constraints in contour plot
-    fig, ax = linear_constraints_contour( X, Y, Z, A, b, 25, True )
+    fig, ax = linear_constraints_contour( X, Y, Z, A, b, 25, )
+
+    return fig, ax

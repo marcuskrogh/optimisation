@@ -5,20 +5,21 @@ from cvxopt         import matrix
 def objective( ):
     ## System matrix and vector
     H = matrix( [
-        [ 6.0, 2.0, ],
-        [ 2.0, 5.0, ],
+        [ 1.0, 0.0, ],
+        [ 0.0, 1.0, ],
         ] )
-    g = matrix( [ -8.0, -3.0 ] )
+
+    g = matrix( [ -1.0, -5.0 ] )
 
     return H, g
 
 ## Constraint function
 def constraints( ):
     ## System matrix and vector
-    A = matrix( [
-        [ 1.0, 0.0 ],
-        [ 0.0, 1.0 ],
-        ] )
-    b = matrix( [ 3.0, 0.0 ] )
+    C = matrix( [
+        [  1.0,  0.0,  1.0,  1.0, -5.0 ],
+        [  0.0,  1.0, -1.0, -5.0,  1.0 ],
+        ] ).T
+    d = matrix( [  1.0,  1.0, -2.0, -20.0, -15.0 ] )
 
-    return A, b
+    return C, d

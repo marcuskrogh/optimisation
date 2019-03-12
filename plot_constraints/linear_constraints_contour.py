@@ -46,6 +46,7 @@ def linear_constraints_contour(
     ## Define variable intervals as diagonals of meshgrid variables
     x = X[::nx+1]
     y = Y[::ny+1]
+    A = A.T
 
     ## Define maximum and minimum variables
     x_min, x_max = cvxopt.min(x), cvxopt.max(x)
@@ -113,15 +114,18 @@ def linear_constraints_contour(
     p.set_edgecolor( 'black' )
 
     ## Plot objective and constraint patches
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots( figsize=(10,6))
     ax.set_xlim( x_min, x_max )
     ax.set_ylim( y_min, y_max )
 
-    normalise = matplotlib.colors.Normalize( \
-        vmin=cvxopt.min(Z), vmax=cvxopt.max(Z) )
     color_map = plt.cm.get_cmap("jet")
-    ax.contour( X, Y, Z, n_contours, cmap=color_map, norm=normalise )
+    #ax.imshow( Z, extent=(x_min, x_max, y_min, y_max), cmap=color_map )
+    #v1 = matrix( range(0,50,10) )/10
+    #v2 = matrix( range(250,10000,500) )/50
+    #v  = matrix( [v1, v2] )
+    ax.contour( X, Y, Z, n_contours, cmap=color_map, )
     ax.add_collection(p)
+    fig.tight_layout()
 
     ## Show plot
     if show_plot:
