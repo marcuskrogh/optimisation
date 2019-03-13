@@ -1,212 +1,330 @@
+############################################################################
+################################## Imports #################################
+############################################################################
+## CVX opt
 import cvxopt
-from cvxopt import matrix, spmatrix, spdiag, sqrt, div
+from cvxopt import matrix, spmatrix, spdiag, sqrt, mul, div
 
+## Numpy
+import numpy as np
+############################################################################
+############################################################################
+############################################################################
+
+
+############################################################################
+############################### Type checking ##############################
+############################################################################
+def type_checking( H, g, A, b, C, d, x_0, y_0, z_0, s_0 ):
+    try:
+        H    = matrix(H)
+        n, _ = H.size
+
+        g   = matrix(g)
+    except:
+        print( 'System matrices are not properly defined.' )
+
+    try:
+        A = matrix(A)
+        _, ma = A.size
+        b = matrix(b)
+        eq = True
+    except:
+        A = matrix( 0.0, (n,0) )
+        ma = 0
+        b = matrix( 0.0, (0,1) )
+        eq = False
+
+    try:
+        C = matrix(C)
+        _, mc = C.size
+        d = matrix(d)
+        ineq = True
+    except:
+        C = matrix( 0.0, (n,0) )
+        mc = 0
+        d = matrix( 0.0, (0,1) )
+        ineq = False
+
+    try:
+        x_0 = matrix( x_0 )
+    except:
+        x_0 = matrix( 0.0, (n,1) )
+
+    try:
+        y_0 = matrix( y_0 )
+    except:
+        y_0 = matrix( 0.0, (ma,1) )
+
+    try:
+        z_0 = matrix( z_0 )
+    except:
+        z_0 = matrix( 1.0, (mc,1) )
+
+    try:
+        s_0 = matrix( s_0 )
+    except:
+        s_0 = matrix( 1.0, (mc,1) )
+
+
+    return H, g, A, b, C, d, x_0, y_0, z_0, s_0, n, ma, mc, eq, ineq
+############################################################################
+############################################################################
+############################################################################
+
+
+############################################################################
+########################### Interior Point Method ##########################
+############################################################################
 def interior_point( \
     ## System matrices
     H, g, \
     ## Equality constraint matrices
-    A, b, \
+    A=None, b=None, \
     ## Inequality constraint matrices
-    C, d, \
+    C=None, d=None, \
     ## Initial guess
-    x_0, y_0, z_0, s_0,
+    x_0=None, y_0=None, z_0=None, s_0=None,
     ## ALgirithm parameters
-    eta=0.995, tol=1e-10, maxiter=10, ):
+    eta=0.995, tol=1e-10, it_max=100, ):
+    """
+############################################################################
+### Primal-Dual Predictor-Corrector Interior Point Method for Convex QPs ###
+############################################################################
 
+    Description:
+        The method solves the convex constrained quadratic programmes
+        of the form:
 
+            min     1/2 x' H x + g' x
+             x
+            s.t.    A' x == b
+                    C' x >= d
+
+        given system matrices and some set of initial guesses.
+
+    Inputs:
+        H           ->      Quadratic objective matrix      |   n  x n
+        g           ->      Linear objective vector         |   n  x 1
+        A           ->      Equality constraint matrix      |   n  x me
+        b           ->      Equality constraint vector      |   me x 1
+        C           ->      Inequality constraint matrix    |   n  x mi
+        d           ->      Inequality constraint vector    |   mi x 1
+        x_0         ->      Initial guess of x              |   n  x 1
+        y_0         ->      Initial guess of y              |   n  x 1
+        z_0         ->      Initial guess of z              |   n  x 1
+        s_0         ->      Initial guess of s              |   n  x 1
+        it_max      ->      Maximum allowed iterations      |   integer
+
+    Outputs:
+        res         ->      Result dictionary
+            Optimal Variables:
+                x   ->      State variables                 | n  x 1
+                y   ->      Lagrange multiplier (Eq)        | ma x 1
+                z   ->      Lagrange multiplier (Ineq)      | mc x 1
+                s   ->      Slack variables (Ineq)          | mc x 1
+            Iteration data:
+                X   ->      State variables                 | N  x n
+                Y   ->      Lagrange multiplier (Eq)        | N  x ma
+                Z   ->      Lagrange multiplier (Ineq)      | N  x mc
+                S   ->      Slack variables (Ineq)          | N  x mc
+            Congergence information:
+                converged   ->  Did the algorithm converge  | boolean
+                N           ->  Number of iterations        | integer
+    """
+    ########################################################################
+    ################### Type checking and initialisation ###################
+    ########################################################################
     ## Type checking
-    H = matrix( H )
-    g = matrix( g )
-    A = matrix( A )
-    b = matrix( b )
-    C = matrix( C )
-    d = matrix( d )
-    x_0 = matrix( x_0 )
-    y_0 = matrix( y_0 )
-    z_0 = matrix( z_0 )
-    s_0 = matrix( s_0 )
+    H, g, A, b, C, d, x_0, y_0, z_0, s_0, n, ma, mc, eq, ineq = \
+        type_checking( H, g, A, b, C, d, x_0, y_0, z_0, s_0 )
 
     ## Initialisation
-    iter = 0
-    mc   = z_0.size[0]
-    X    = matrix( [ x_0.T ] )
-    Z    = z_0
-    S    = s_0
+    x    = x_0
+    y    = y_0
+    z    = z_0
+    s    = s_0
 
-    ## Initial guess correction
-    r_L  = H*x_0 + g - A*y_0 - C*z_0;
-    r_A  = b - A.T*x_0;
-    r_C  = s_0 + d - C.T*x_0
-    r_SZ = S.T*Z
-
-    H_bar = H + C*(spdiag(div(Z,S)))*C.T
-    KKT   = matrix( [   [ H_bar, -A.T                                 ],  \
-                        [ -A   , matrix( 0.0, (A.size[1],A.size[1]) ) ] ] )
-    I   = matrix( range(KKT.size[0]) )  # Identity for LDL
-
-    ## LDL-decomposition
-    cvxopt.lapack.sytrf( KKT, I )
-
-    """
-    % Affine search direction computation
-        r_bar_L   = r_L - C*(S\Z)*(r_C - Z\r_SZ);
-        r_A_bar_L = [r_bar_L; r_A];
-        tmp(p)    = -L'\(D\(L\(r_A_bar_L(p))));
-        dx_aff    = tmp(1:length(r_bar_L))';
-        dz_aff    = -(S\Z)*C'*dx_aff + (S\Z)*(r_C - Z\r_SZ);
-        ds_aff    = -Z\r_SZ - Z\S*dz_aff;
-    """
+    ## Iteration data
+    X    = matrix( [ x.T ] )
+    Y    = matrix( [ y.T ] )
+    Z    = matrix( [ z.T ] )
+    S    = matrix( [ s.T ] )
+    ########################################################################
+    ########################################################################
+    ########################################################################
 
 
-"""
-function [x,y,z,s,data] = interior_point( H, g, A, b, C, d, ...
-                                          x0, y0, z0, s0,   ...
-                                          eta, tol )
+    ########################################################################
+    ####################### Initial guess correction #######################
+    ########################################################################
+    ## Compute residuals
+    r_L  = H*x + g - A*y - C*z
+    r_A  = b - A.T*x
+    r_C  = s + d - C.T*x
+    r_SZ = mul( s, z )
 
-% ======================== Initialization ========================= %
-    iter    = 1;
-    maxiter = 100;
-    m_c     = length(z0);
+    ## Setup KKT system and LDL-decomposition
+    H_bar = H + C*(spdiag(div(z,s)))*C.T
+    KKT   = matrix( [ [ H_bar, -A.T                   ] , \
+                      [ -A   , matrix( 0.0, (ma,ma) ) ] ] )
+    p     = matrix( range(n+ma) )   # Permutation vector
+    cvxopt.lapack.sytrf( KKT, p )   # LDL-decomposition
 
-    % Pre-allocation
-    data.x = x0;
-% ================================================================= %
+    ## Affine seach direction
+    r_bar_L   = r_L - C * mul( div(z,s), r_C - div(r_SZ,z) )
+    r_A_bar_L = matrix( [ -r_bar_L, -r_A ] )
+    d_aff     = +r_A_bar_L
+    cvxopt.lapack.sytrs( KKT, p, d_aff )    # Solve system via LDL
+    dx_aff    = d_aff[:n]
+    dz_aff    = - mul( div(z,s), C.T*dx_aff )   \
+                + mul( div(z,s), r_C - div(r_SZ,z) )
+    ds_aff    = - div(r_SZ,z) - mul( div(s,z), dz_aff )
 
-% =========== Corrections on z0 and s0 if necessary =============== %
-    % Compute residuals and duality gap.
-        %Z = bsxfun(@times,z0,eye(m_c));
-        %S = bsxfun(@times,s0,eye(m_c));
-        Z = diag(z0);
-        S = diag(s0);
-        e = ones(m_c,1);
-        r_L  = H*x0 + g - A*y0 - C*z0;
-        r_A  = b - A'*x0;
-        r_C  = s0 + d - C'*x0;
-        r_SZ = S*Z*e;
+    ## Update to initial guess
+    #x = x  # z and s determines feasibility
+    #y = y  # z and s determines feasibility
+    z = matrix( [ max( 1, (z[i] + dz_aff[i]) ) for i in range(mc) ] )
+    s = matrix( [ max( 1, (s[i] + ds_aff[i]) ) for i in range(mc) ] )
+    ########################################################################
+    ########################################################################
+    ########################################################################
 
-    % KKT_bar and LDL-factorizaion.
-        H_bar   = H + C*(S\Z)*C';
-        KKT_bar = [H_bar, -A; -A', zeros(size(A,2))];
-        [L,D,p] = ldl(KKT_bar,'lower','vector');
 
-    % Affine search direction computation
-        r_bar_L   = r_L - C*(S\Z)*(r_C - Z\r_SZ);
-        r_A_bar_L = [r_bar_L; r_A];
-        tmp(p)    = -L'\(D\(L\(r_A_bar_L(p))));
-        dx_aff    = tmp(1:length(r_bar_L))';
-        dz_aff    = -(S\Z)*C'*dx_aff + (S\Z)*(r_C - Z\r_SZ);
-        ds_aff    = -Z\r_SZ - Z\S*dz_aff;
+    ########################################################################
+    ##################### Definition of stop criterion #####################
+    ########################################################################
+    ## Compute residuals
+    r_L  = H*x + g - A*y - C*z
+    r_A  = b - A.T*x
+    r_C  = s + d - C.T*x
+    r_SZ = mul( s, z )
+    mu   = sum(r_SZ)/mc
 
-    % Setting initial state of variables
-        x = x0;
-        y = y0;
-        z = max(1,abs(z0+dz_aff));
-        s = max(1,abs(s0+ds_aff));
-% ================================================================= %
+    ## Define tolerances
+    tol_L  = tol * max( matrix([1.0,H[::],g[::],A[::],C[::]]) )
+    tol_A  = tol * max( matrix([1.0,A[::],b[::]]) )
+    tol_C  = tol * max( matrix([1.0,d[::],C[::]]) )
+    tol_mu = tol * mu
 
-% =========== Residuals and Convergence =========================== %
-    % Computation of residuals
+    ## Define convergence measure
+    def converged( r_L, r_A, r_C, mu ):
+        res = ( ( max(matrix([0.0,r_L    ]) ) <= tol_L  ) and    \
+                ( max(matrix([0.0,r_A    ]) ) <= tol_A  ) and    \
+                ( max(matrix([0.0,r_C    ]) ) <= tol_C  ) and    \
+                ( max(matrix([0.0,abs(mu)]) ) <= tol_mu )        )
+        return res
+    ########################################################################
+    ########################################################################
+    ########################################################################
+
+
+    ########################################################################
+    ############################ Main algorithm ############################
+    ########################################################################
+    it = 0
+    while (not converged(r_L, r_A, r_C, mu)) and (it < it_max):
+        ## Form KKT system and compute LDL-factorisation
+        H_bar = H + C*(spdiag(div(z,s)))*C.T
+        KKT   = matrix([[ H_bar, -A.T                   ], \
+                        [ -A   , matrix( 0.0, (ma,ma) ) ]] )
+        p   = matrix( range(n+ma) )     # Permutation vector
+        cvxopt.lapack.sytrf( KKT, p )   # Overwrites KKT and p
+
+        ## Compute affine seach direction
+        r_bar_L   = r_L - C * mul( div(z,s), r_C - div(r_SZ,z) )
+        r_A_bar_L = matrix( [ -r_bar_L, -r_A ] )
+        d_aff     = +r_A_bar_L
+        cvxopt.lapack.sytrs( KKT, p, d_aff )    # Solves via LDL
+        dx_aff    = d_aff[:n]
+        dz_aff    = - mul( div(z,s), C.T*dx_aff )   \
+                    + mul( div(z,s), r_C - div(r_SZ,z) )
+        ds_aff    = - div(r_SZ,z) - mul( div(s,z), dz_aff )
+
+        ## Compute affine step length
+        z_idx = matrix( list( filter( \
+            lambda i: dz_aff[i] < 0.0, range(mc) ) ) )  # Limits in z
+        s_idx = matrix( list( filter( \
+            lambda i: ds_aff[i] < 0.0, range(mc) ) ) )  # Limits in s
+
+        alpha_z_aff = min( matrix([ 1.0, -div(z[z_idx],dz_aff[z_idx])]) )
+        alpha_s_aff = min( matrix([ 1.0, -div(s[s_idx],ds_aff[s_idx])]) )
+        alpha_aff   = min( matrix([alpha_z_aff, alpha_s_aff]) )
+
+        ## Compute duality gap and centering parameter
+        mu_aff = (z + alpha_aff*dz_aff).T * (s + alpha_aff*ds_aff) / mc
+        sigma  = (mu_aff/mu)**3
+
+        ## Computate affine-centering-correction search direction
+        r_bar_SZ  = r_SZ + mul( ds_aff, dz_aff ) - sigma*mu
+        r_bar_L   = r_L - C*mul( div(z,s), r_C - div(r_bar_SZ,z) )
+        r_A_bar_L = matrix( [ -r_bar_L, -r_A ] )
+        d_        = +r_A_bar_L
+        cvxopt.lapack.sytrs( KKT, p, d_ )   # Solves via LDL
+        dx        = d_[:n]
+        dy        = d_[n:]
+        dz        = - mul( div(z,s), C.T*dx ) \
+                    + mul( div(z,s), r_C - div(r_bar_SZ,z) )
+        ds        = - div(r_bar_SZ,z) - mul( div(s,z), dz )
+
+        ## Compute affine-centering-correction step length
+        z_idx = matrix( list( filter( \
+            lambda i: dz[i] < 0.0, range(mc) ) ) )
+        s_idx = matrix( list( filter( \
+            lambda i: ds[i] < 0.0, range(mc) ) ) )
+
+        alpha_z   = min( matrix( [ 1 , -div(z[z_idx],dz[z_idx]) ] ) )
+        alpha_s   = min( matrix( [ 1 , -div(s[s_idx],ds[s_idx]) ] ) )
+        alpha     = min( matrix( [ alpha_z, alpha_s ] ) )
+        alpha_bar = eta*alpha
+
+        ## Update step
+        x = x + alpha_bar*dx
+        y = y + alpha_bar*dy
+        z = z + alpha_bar*dz
+        s = s + alpha_bar*ds
+
+        ## Re-compute residuals
         r_L  = H*x + g - A*y - C*z;
-        r_A  = b - A'*x;
-        r_C  = s + d - C'*x;
-        r_SZ = s.*z;
-        mu   = sum(r_SZ)/m_c;
+        r_A  = b - A.T*x;
+        r_C  = s + d - C.T*x
+        r_SZ = mul( s, z )
+        mu   = sum(r_SZ)/mc
 
-    % Check convergence meausure.
-        tol_L  = tol*max(1,norm([H,g,A,C],inf));
-        tol_A  = tol*max(1,norm([A',b],inf));
-        tol_C  = tol*max(1,norm([eye(size(d)),d,C'],inf));
-        tol_mu = tol*1e-2*mu;
+        ## Iterate
+        it += 1
 
-    % Defining convergence.
-        converged = (   ( norm(r_L,inf) <= tol_L  )   && ...
-                        ( norm(r_A,inf) <= tol_A  )   && ...
-                        ( norm(r_C,inf) <= tol_C  )   && ...
-                        (  abs(mu ,inf) <= tol_mu )   );
-% ================================================================= %
+        ## Store iteration data
+        X = matrix( [ X, x.T ] )
+        Y = matrix( [ Y, y.T ] )
+        Z = matrix( [ Z, z.T ] )
+        S = matrix( [ S, s.T ] )
+    ########################################################################
+    ########################################################################
+    ########################################################################
 
 
-% ================================================================= %
-% Main while loop.
-while ~converged
-    iter = iter + 1;
+    ########################################################################
+    ###################### Construct result dictionary #####################
+    ########################################################################
+    res =   { \
+        ## Optimal variables
+        'x'         : x,                            \
+        'y'         : y,                            \
+        'z'         : z,                            \
+        's'         : s,                            \
+        ## Iteration data
+        'X'         : X,                            \
+        'Y'         : Y,                            \
+        'Z'         : Z,                            \
+        'S'         : S,                            \
+        ## Convergence information
+        'converged' : converged(r_L, r_A, r_C, mu), \
+        'N'         : it,                           \
+            }
+    ########################################################################
+    ########################################################################
+    ########################################################################
 
-    % Precomputing Z and S
-        Z = bsxfun(@times,z,eye(m_c));
-        S = bsxfun(@times,s,eye(m_c));
 
-    % 1) KKT_bar and LDL-factorizaion.
-        H_bar   = H + C*(S\Z)*C';
-        KKT_bar = [H_bar, -A; -A', zeros(size(A,2))];
-        [L,D,p] = ldl(KKT_bar,'lower','vector');
-
-    % 2) Computation of Affine Step Direction.
-        % Residuals.
-        r_bar_L   = r_L - C*(S\Z)*(r_C - Z\r_SZ);
-        r_A_bar_L = [r_bar_L; r_A];
-        tmp(p)    = -L'\(D\(L\(r_A_bar_L(p))));
-
-        dx_aff    = tmp(1:size(H,1))';
-        dz_aff    = -(S\Z)*C'*dx_aff + (S\Z)*(r_C - Z\r_SZ);
-        ds_aff    = -Z\r_SZ - Z\S*dz_aff;
-
-        % Affine step parameter size determination.
-        % Find critical areas
-        z_idx = find( dz_aff < 0.0 );
-        s_idx = find( ds_aff < 0.0 );
-
-        alpha_z_aff = min([1;-z(z_idx)./(dz_aff(z_idx))]);
-        alpha_s_aff = min([1;-s(s_idx)./(ds_aff(s_idx))]);
-        alpha_aff   = min(alpha_z_aff,alpha_s_aff);
-
-    % 3) Computation of Duality Gap and Centering Parameter.
-        mu_aff = (z + alpha_aff*dz_aff)'*(s + alpha_aff*ds_aff) ...
-                  ./m_c;
-        sigma  = (mu_aff/mu)^3;
-
-    % 4) Computation of Affine-Centering-Correction Direction
-        r_bar_SZ = r_SZ + ds_aff.*dz_aff - sigma*mu;
-        r_bar_L   = r_L - C*(S\Z)*(r_C - Z\r_bar_SZ);
-        r_A_bar_L = [r_bar_L; r_A];
-        tmp(p)    = -L'\(D\(L\(r_A_bar_L(p))));
-        dx        = tmp(1:size(H,1))';
-        dy        = tmp(size(H,1)+1:end)';
-        dz        = -(S\Z)*C'*dx + (S\Z)*(r_C - Z\r_bar_SZ);
-        ds        = -Z\r_bar_SZ - Z\S*dz;
-
-        % Step parameter size determination.
-        z_idx = find( dz < 0.0 );
-        s_idx = find( ds < 0.0 );
-
-        alpha_z   = min([1;-z(z_idx)./(dz(z_idx))]);
-        alpha_s   = min([1;-s(s_idx)./(ds(s_idx))]);
-        alpha     = min(alpha_z,alpha_s);
-        alpha_bar = eta*alpha;
-
-    % 5) Updating step
-        x = x + alpha_bar*dx;
-        y = y + alpha_bar*dy;
-        z = z + alpha_bar*dz;
-        s = s + alpha_bar*ds;
-
-    % Recomputing residuals and duality gap));
-        r_L  = H*x + g - A*y - C*z;
-        r_A  = b - A'*x;
-        r_C  = s + d - C'*x;
-        r_SZ = s.*z;
-        mu   = sum(r_SZ)/m_c;
-
-        converged = (   ( norm(r_L,inf) <= tol_L  ) && ...
-                        ( norm(r_A,inf) <= tol_A  ) && ...
-                        ( norm(r_C,inf) <= tol_C  ) && ...
-                        ( abs(mu)       <= tol_mu ) );
-
-    % Data insertion
-        data.x = [data.x, x];
-
-    if ~(iter <= maxiter)
-        warning('ERROR!!! Method did not converge.');
-        break;
-    end
-end
-"""
+    return res
