@@ -267,8 +267,21 @@ def active_set(      \
                     lambda_opt[ma+w_k] = lambda_k[ma:]
                 w_opt      = w_k
 
-                ## Return statement
-                return x_opt, lambda_opt, w_opt, X
+                ## Construct result dictionary
+                res =   { \
+                    ## Optimal variables
+                    'x'         : x_opt,        \
+                    'y'         : lambda_opt,   \
+                    'w'         : w_opt,        \
+                    ## Iteration data
+                    'X'         : X,            \
+                    'Y'         : Y,            \
+                    'W'         : W,            \
+                    ## Convergence information
+                    'converged' : converged,    \
+                    'N'         : it,           \
+                        }
+                return res
             else:
                 ## Find constraint with negative Lagrange multiplier
                 j   = list(filter( \

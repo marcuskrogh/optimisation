@@ -27,30 +27,29 @@ def main():
     ## Visualisation of QP with constraints
     fig, ax = driver()
 
-    ## Solution via interior point algorithm
-    A = matrix(C[:,0])
-    b = matrix(d[0])
-    interior_point(H,g,A,b,C[:,:4],d[:4],[1,1],[1],[1,1,1,1],[1,1,1,1])
 
-    """
-    ## Solution via CVXOPT
+    ## Redefine prolem
+
+
+    ## Solution via cvxopt
     x_opt_cvxopt = qp( H, g, -C.T, -d )['x']
-    print( 'Optimal solution (from CVXOpt): \n', x_opt_cvxopt )
+    print( 'Optimal solution (C V X O P T):              \n', x_opt_cvxopt )
+
+
+    ## Solution via interior point algorithm
+    res_ip = interior_point( H, g, C=C, d=d, x_0=[2,2] )
+    print( 'Optimal solution (custom interior point):    \n', res_ip['x']  )
 
     ## Solution via custom algorithm - Primal active set
-    x_opt, lambda_opt, W_opt, X = active_set( H, g, C=C, d=d, \
-        x_0=[3.5,2.5], W_0=[4] )
-    print( 'Optimal solution (from Primal Active Set): ' )
-    print( 'x:                  \n', x_opt      )
-    #print( 'lambda:             \n', lambda_opt )
-    #print( 'Working set:        \n', W_opt      )
-    #print( 'Iteration sequence: \n', X          )
+    res_as = active_set( H, g, C=C, d=d, x_0=[3.5,2.5], w_0=[4] )
+    print( 'Optimal solution (custom primal active set): \n', res_as['x']  )
+
 
     ## Visualisation of iteration sequence and optimal point
-    ax.plot( x_opt_cvxopt[0], x_opt_cvxopt[1], 'k2' , markersize=10 )
-    ax.plot( X[:,0]         , X[:,1]         , 'r1-', markersize=10 )
+    ax.plot( x_opt_cvxopt[0] , x_opt_cvxopt[1] , 'k1' , markersize=20 )
+    ax.plot( res_ip['X'][:,0], res_ip['X'][:,1], 'r2-', markersize=20 )
+    ax.plot( res_as['X'][:,0], res_as['X'][:,1], 'b3-', markersize=20 )
     plt.show()
-    """
 
 
 ## Execution
