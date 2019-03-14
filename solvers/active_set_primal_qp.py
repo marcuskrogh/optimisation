@@ -6,6 +6,8 @@ from cvxopt.solvers import qp
 ## Additional imports
 import numpy as np
 
+## Time
+import time
 
 ############################################################################
 ################################# KKT solver ###############################
@@ -31,6 +33,26 @@ def kktsolver( H, g, A, b, ):
     lambda_ = res[n:]   # Lagrange multipliers
 
     return x, lambda_
+############################################################################
+############################################################################
+############################################################################
+
+
+############################################################################
+########################## Unconstrained QP solver #########################
+############################################################################
+def ucqpsolver( H, g, ):
+    L = +H
+    x = +(-g)
+
+    ## Cholesky-decomposition
+    cvxopt.lapack.potrf( L    )
+
+    ## Solve linear system of equation via Cholesky-decomposition
+    cvxopt.lapack.potrs( L, x )
+
+    ## Return statement
+    return x
 ############################################################################
 ############################################################################
 ############################################################################
@@ -99,25 +121,6 @@ def type_checking( H, g, A, b, C, d, x_0, w_0 ):
 ############################################################################
 ############################################################################
 
-############################################################################
-########################## Unconstrained QP solver #########################
-############################################################################
-def ucqpsolver( H, g, ):
-    L = +H
-    x = +(-g)
-
-    ## Cholesky-decomposition
-    cvxopt.lapack.potrf( L    )
-
-    ## Solve linear system of equation via Cholesky-decomposition
-    cvxopt.lapack.potrs( L, x )
-
-    ## Return statement
-    return x
-############################################################################
-############################################################################
-############################################################################
-
 
 ############################################################################
 ############### Active Set Algorithm for Quadratic Programmes ##############
@@ -168,16 +171,30 @@ def active_set(      \
             structures, e.g., sparse systems, block-diagonal systems.
 
     Outputs:
-        x_opt   ->      Optimal point                   |   n  x 1
-        w_opt   ->      Optimal working set             |   Indecies
+        res         ->      Result dictionary
+            Optimal Variables:
+                x   ->      State variables                 | n  x 1
+                y   ->      Lagrange multiplier (Eq)        | ma x 1
+                w   ->      Initial guess on working set    | Indecies
+            Iteration data:
+                X   ->      State variables                 | N  x n
+                Y   ->      Lagrange multiplier (Eq)        | N  x ma
+                W   ->      Working set                     | N  x n_w(k)
+            Congergence information:
+                converged   ->  Did the algorithm converge  | boolean
+                N           ->  Number of iterations        | integer
+                T           ->  Time used                   | Seconds
     """
+    ## Start timing
+    cpu_time_start = time.process_time()
+
     ## Type checking
     H, g, A, b, C, d, x_0, w_0, n, ma, mc, eq, ineq = \
         type_checking( H, g, A, b, C, d, x_0, w_0 )
 
     ## Problem type
-    if eq:
-        if ineq:
+    if ma > 0:
+        if mc > 0:
             #Full problem
             print( 'Equality-inequality constrained QP.' )
             pass
@@ -187,11 +204,29 @@ def active_set(      \
             print( 'Solving via KKT solver...' )
 
             ## Solve via KKT system
-            x_opt, lambda_opt = kktsolver_( H, g, A, b )
-            w_opt = matrix( range( A.size[1] ) )
+            x_k, lambda_opt = kktsolver_( H, g, A, b )
+            w_k = matrix( range( A.size[1] ) )
             X = matrix( [ x_0.T, x_k.T ] )
 
-            return x_opt, lambda_opt, w_opt, X
+            ## Finish timing
+            cpu_time = time.process_time() - cpu_time_start
+
+            res =   { \
+                ## Optimal variables
+                'x'         : x_k,          \
+                'y'         : lambda_opt,   \
+                'w'         : w_k,          \
+                ## Iteration data
+                'X'         : X,            \
+                'Y'         : None,         \
+                'W'         : None,         \
+                ## Convergence information
+                'converged' : True,         \
+                'N'         : 0,            \
+                'T'         : cpu_time,     \
+                    }
+
+            return res
     else:
         if ineq:
             #Inequality constrained problem
@@ -205,8 +240,26 @@ def active_set(      \
             x_opt = ucqpsolver( H, g )
             X = matrix( [ x_0.T, x_opt.T ] )
 
+            ## Finish timing
+            cpu_time = time.process_time() - cpu_time_start
+
+            res =   { \
+                ## Optimal variables
+                'x'         : x_k,          \
+                'y'         : None,         \
+                'w'         : None,         \
+                ## Iteration data
+                'X'         : X,            \
+                'Y'         : None,         \
+                'W'         : None,         \
+                ## Convergence information
+                'converged' : True,         \
+                'N'         : 0,            \
+                'T'         : cpu_time,     \
+                    }
+
             ## Return statement
-            return x_opt, matrix([]), matrix([]), X
+            return res
 
     ## Initialisation
     x_k = x_0
@@ -225,7 +278,7 @@ def active_set(      \
     ## While-loop
     it = 0
     converged = False
-    while it < it_max:
+    while (not converged) and (it < it_max):
         """
         Solve the QP from 16.39
 
@@ -239,6 +292,9 @@ def active_set(      \
             where p_k is the step direction, such that the next iterate
             x_{k+1} = x_k + alpha * p_k, where 0 <= alpha <= 1.
         """
+        ## Iterate
+        it += 1
+
         ## Setup sub-problem
         g_k   = H*x_k + g
         if len(w_k) == 0:
@@ -256,9 +312,7 @@ def active_set(      \
             ## Lambda_k satisfies 16.42 from KKT solution
             if min(lambda_k[ma:]) >= 0.0:
                 ## Optimal solution found
-                print( 'Optimal solution found.' )
                 converged  = True
-                x_opt      = x_k
                 if len(lambda_k[ma:]) == 0:
                     lambda_opt = matrix( 0.0, (1,ma+mc) )
                 else:
@@ -266,22 +320,6 @@ def active_set(      \
                     lambda_opt[:ma]    = lambda_k[:ma]
                     lambda_opt[ma+w_k] = lambda_k[ma:]
                 w_opt      = w_k
-
-                ## Construct result dictionary
-                res =   { \
-                    ## Optimal variables
-                    'x'         : x_opt,        \
-                    'y'         : lambda_opt,   \
-                    'w'         : w_opt,        \
-                    ## Iteration data
-                    'X'         : X,            \
-                    'Y'         : Y,            \
-                    'W'         : W,            \
-                    ## Convergence information
-                    'converged' : converged,    \
-                    'N'         : it,           \
-                        }
-                return res
             else:
                 ## Find constraint with negative Lagrange multiplier
                 j   = list(filter( \
@@ -321,8 +359,6 @@ def active_set(      \
                 x_k += p_k
                 #w_k = w_k
 
-        it += 1
-
         ## Store iteration data
         X = matrix( [ X, x_k.T     ] )
         if len(lambda_k[ma:]) == 0:
@@ -335,14 +371,17 @@ def active_set(      \
         W.append([w_k])
 
 
+    ## Finish timing
+    cpu_time = time.process_time() - cpu_time_start
+
     ########################################################################
     ###################### Construct result dictionary #####################
     ########################################################################
     res =   { \
         ## Optimal variables
-        'x'         : x_opt,        \
-        'y'         : lambda_opt,   \
-        'w'         : w_opt,        \
+        'x'         : x_k,          \
+        'y'         : lambda_opt,     \
+        'w'         : w_k,          \
         ## Iteration data
         'X'         : X,            \
         'Y'         : Y,            \
@@ -350,6 +389,7 @@ def active_set(      \
         ## Convergence information
         'converged' : converged,    \
         'N'         : it,           \
+        'T'         : cpu_time,     \
             }
     ########################################################################
     ########################################################################

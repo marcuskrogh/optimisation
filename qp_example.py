@@ -32,17 +32,30 @@ def main():
 
 
     ## Solution via cvxopt
+    print( '------------------------' )
     x_opt_cvxopt = qp( H, g, -C.T, -d )['x']
-    print( 'Optimal solution (C V X O P T):              \n', x_opt_cvxopt )
+    print( 'C V X O P T solution:              \n', x_opt_cvxopt )
+    print( '------------------------' )
+    print()
 
 
     ## Solution via interior point algorithm
+    print( '------------------------' )
     res_ip = interior_point( H, g, C=C, d=d, x_0=[2,2] )
-    print( 'Optimal solution (custom interior point):    \n', res_ip['x']  )
+    print( 'Custom interior point solution:    \n', res_ip['x']  )
+    print( 'Iterations: %d     ' % res_ip['N']        )
+    print( 'CPU-time:   %.2f ms' % (res_ip['T']*1000) )
+    print( '------------------------' )
+    print()
 
     ## Solution via custom algorithm - Primal active set
+    print( '------------------------' )
     res_as = active_set( H, g, C=C, d=d, x_0=[3.5,2.5], w_0=[4] )
-    print( 'Optimal solution (custom primal active set): \n', res_as['x']  )
+    print( 'Custom primal active set solution: \n', res_as['x']  )
+    print( 'Iterations: %d     ' % res_as['N']        )
+    print( 'CPU-time:   %.2f ms' % (res_as['T']*1000) )
+    print( '------------------------' )
+    print()
 
 
     ## Visualisation of iteration sequence and optimal point

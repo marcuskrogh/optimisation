@@ -7,6 +7,58 @@ from cvxopt import matrix, spmatrix, spdiag, sqrt, mul, div
 
 ## Numpy
 import numpy as np
+
+## Time
+import time
+############################################################################
+############################################################################
+############################################################################
+
+
+############################################################################
+################################# KKT solver ###############################
+############################################################################
+def kktsolver( H, g, A, b, ):
+    ## Problem size
+    n, m = A.size
+
+    ## Setup of KKT-system
+    O   = matrix( 0.0, (m, m) )                # Zeros for KKT matrix
+    KKT = matrix( [ [ H, A.T ], [ A, O ] ] ) # KKT matrix
+    res = matrix( [ g, b ] )                 # Right-hand side
+    I   = matrix( range(n+m) )                 # Identity for LDL
+
+    ## LDL-decomposition
+    cvxopt.lapack.sytrf( KKT, I )
+
+    ## Solution via LDL-decompotision
+    cvxopt.lapack.sytrs( KKT, I, res )
+
+    ## Solution
+    x       = -res[:n]  # Optimisation variable
+    lambda_ = res[n:]   # Lagrange multipliers
+
+    return x, lambda_
+############################################################################
+############################################################################
+############################################################################
+
+
+############################################################################
+########################## Unconstrained QP solver #########################
+############################################################################
+def ucqpsolver( H, g, ):
+    L = +H
+    x = +(-g)
+
+    ## Cholesky-decomposition
+    cvxopt.lapack.potrf( L    )
+
+    ## Solve linear system of equation via Cholesky-decomposition
+    cvxopt.lapack.potrs( L, x )
+
+    ## Return statement
+    return x
 ############################################################################
 ############################################################################
 ############################################################################
@@ -28,23 +80,19 @@ def type_checking( H, g, A, b, C, d, x_0, y_0, z_0, s_0 ):
         A = matrix(A)
         _, ma = A.size
         b = matrix(b)
-        eq = True
     except:
         A = matrix( 0.0, (n,0) )
         ma = 0
         b = matrix( 0.0, (0,1) )
-        eq = False
 
     try:
         C = matrix(C)
         _, mc = C.size
         d = matrix(d)
-        ineq = True
     except:
         C = matrix( 0.0, (n,0) )
         mc = 0
         d = matrix( 0.0, (0,1) )
-        ineq = False
 
     try:
         x_0 = matrix( x_0 )
@@ -67,7 +115,7 @@ def type_checking( H, g, A, b, C, d, x_0, y_0, z_0, s_0 ):
         s_0 = matrix( 1.0, (mc,1) )
 
 
-    return H, g, A, b, C, d, x_0, y_0, z_0, s_0, n, ma, mc, eq, ineq
+    return H, g, A, b, C, d, x_0, y_0, z_0, s_0, n, ma, mc
 ############################################################################
 ############################################################################
 ############################################################################
@@ -131,13 +179,90 @@ def interior_point( \
             Congergence information:
                 converged   ->  Did the algorithm converge  | boolean
                 N           ->  Number of iterations        | integer
+                T           ->  Time used                   | Seconds
     """
+    ## Start timing
+    cpu_time_start = time.process_time()
+
     ########################################################################
     ################### Type checking and initialisation ###################
     ########################################################################
-    ## Type checking
-    H, g, A, b, C, d, x_0, y_0, z_0, s_0, n, ma, mc, eq, ineq = \
+    ## Check matrix and vector types
+    H, g, A, b, C, d, x_0, y_0, z_0, s_0, n, ma, mc = \
         type_checking( H, g, A, b, C, d, x_0, y_0, z_0, s_0 )
+
+
+    ## Check problem type
+    if ma > 0:
+        if mc > 0:
+            #Full problem
+            print( 'Equality-inequality constrained QP.' )
+            pass
+        else:
+            #Equality constrained problem
+            print( 'Equality constrained QP. ' )
+            print( 'Solving via KKT solver...' )
+
+            ## Solve via KKT system
+            x, y = kktsolver( H, g, A, b )
+            X = matrix( [ x_0.T, x.T ] )
+            Y = matrix( [ y_0.T, y.T ] )
+
+            ## Finish timing
+            cpu_time = time.process_time() - cpu_time_start
+
+            res =   { \
+                ## Optimal variables
+                'x'         : x,            \
+                'y'         : y,            \
+                'z'         : None,         \
+                's'         : None,         \
+                ## Iteration data
+                'X'         : X,            \
+                'Y'         : Y,            \
+                'Z'         : None,         \
+                'S'         : None,         \
+                ## Convergence information
+                'converged' : True,         \
+                'N'         : 0,            \
+                'T'         : cpu_time,     \
+                    }
+
+            return res
+    else:
+        if mc > 0:
+            #Inequality constrained problem
+            print( 'Inequality constrained QP.' )
+            pass
+        else:
+            #Unconstrained problem
+            print( 'Unconstrained QP.' )
+
+            ## Solve via normal equations
+            x = ucqpsolver( H, g )
+            X = matrix( [ x_0.T, x.T ] )
+
+            ## Finish timing
+            cpu_time = time.process_time() - cpu_time_start
+
+            res =   { \
+                ## Optimal variables
+                'x'         : x,            \
+                'y'         : None,         \
+                'z'         : None,         \
+                's'         : None,         \
+                ## Iteration data
+                'X'         : X,            \
+                'Y'         : None,         \
+                'Z'         : None,         \
+                'S'         : None,         \
+                ## Convergence information
+                'converged' : True,         \
+                'N'         : 0,            \
+                'T'         : cpu_time,     \
+                    }
+
+            return res
 
     ## Initialisation
     x    = x_0
@@ -224,6 +349,9 @@ def interior_point( \
     ########################################################################
     it = 0
     while (not converged(r_L, r_A, r_C, mu)) and (it < it_max):
+        ## Iterate
+        it += 1
+
         ## Form KKT system and compute LDL-factorisation
         H_bar = H + C*(spdiag(div(z,s)))*C.T
         KKT   = matrix([[ H_bar, -A.T                   ], \
@@ -291,9 +419,6 @@ def interior_point( \
         r_SZ = mul( s, z )
         mu   = sum(r_SZ)/mc
 
-        ## Iterate
-        it += 1
-
         ## Store iteration data
         X = matrix( [ X, x.T ] )
         Y = matrix( [ Y, y.T ] )
@@ -303,6 +428,8 @@ def interior_point( \
     ########################################################################
     ########################################################################
 
+    ## Finish timing
+    cpu_time = time.process_time() - cpu_time_start
 
     ########################################################################
     ###################### Construct result dictionary #####################
@@ -321,6 +448,7 @@ def interior_point( \
         ## Convergence information
         'converged' : converged(r_L, r_A, r_C, mu), \
         'N'         : it,                           \
+        'T'         : cpu_time,                     \
             }
     ########################################################################
     ########################################################################
