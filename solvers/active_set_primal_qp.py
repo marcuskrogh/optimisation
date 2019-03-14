@@ -17,10 +17,10 @@ def kktsolver( H, g, A, b, ):
     n, m = A.size
 
     ## Setup of KKT-system
-    O   = matrix( 0.0, (m, m) )                # Zeros for KKT matrix
-    KKT = matrix( [ [ H, A.T ], [ A, O ] ] ) # KKT matrix
-    res = matrix( [ g, b ] )                 # Right-hand side
-    I   = matrix( range(n+m) )                 # Identity for LDL
+    O   = matrix( 0.0, (m, m) )                 # Zeros for KKT matrix
+    KKT = matrix( [ [ H, A.T ], [ A, O ] ] )    # KKT matrix
+    res = matrix( [ g, -b ] )                   # Right-hand side
+    I   = matrix( range(n+m) )                  # Permutation vector
 
     ## LDL-decomposition
     cvxopt.lapack.sytrf( KKT, I )
@@ -77,34 +77,29 @@ def norm( x, ):
 ############################################################################
 def type_checking( H, g, A, b, C, d, x_0, w_0 ):
     try:
-        H   = matrix(H)
-        n, _ = H.size
-
-        g   = matrix(g)
+        H = matrix(H)
+        g = matrix(g)
+        n = g.size[0]
     except:
         print( 'System matrices are not properly defined.' )
 
     try:
-        A = matrix(A)
-        _, ma = A.size
-        b = matrix(b)
-        eq = True
+        A  = matrix(A)
+        b  = matrix(b)
+        ma = b.size[0]
     except:
+        A  = matrix( 0.0, (n,0) )
+        b  = matrix( 0.0, (0,1) )
         ma = 0
-        A = matrix( 0.0, (n,ma) )
-        b = matrix( 0.0, (ma,1) )
-        eq = False
 
     try:
-        C = matrix(C)
-        _, mc = C.size
-        d = matrix(d)
-        ineq = True
+        C  = matrix(C)
+        d  = matrix(d)
+        mc = d.size[0]
     except:
+        C  = matrix( 0.0, (n,0) )
+        d  = matrix( 0.0, (0,1) )
         mc = 0
-        C = matrix( 0.0, (n,mc) )
-        d = matrix( 0.0, (mc,1) )
-        ineq = False
 
     try:
         x_0 = matrix( x_0 )
@@ -116,7 +111,7 @@ def type_checking( H, g, A, b, C, d, x_0, w_0 ):
     except:
         w_0 = matrix( [] )      # Default: Empty set
 
-    return H, g, A, b, C, d, x_0, w_0, n, ma, mc, eq, ineq
+    return H, g, A, b, C, d, x_0, w_0, n, ma, mc
 ############################################################################
 ############################################################################
 ############################################################################
@@ -189,7 +184,7 @@ def active_set(      \
     cpu_time_start = time.process_time()
 
     ## Type checking
-    H, g, A, b, C, d, x_0, w_0, n, ma, mc, eq, ineq = \
+    H, g, A, b, C, d, x_0, w_0, n, ma, mc = \
         type_checking( H, g, A, b, C, d, x_0, w_0 )
 
     ## Problem type
@@ -206,7 +201,7 @@ def active_set(      \
             ## Solve via KKT system
             x_k, lambda_opt = kktsolver_( H, g, A, b )
             w_k = matrix( range( A.size[1] ) )
-            X = matrix( [ x_0.T, x_k.T ] )
+            X = matrix( [ x_k.T ] )
 
             ## Finish timing
             cpu_time = time.process_time() - cpu_time_start
@@ -228,7 +223,7 @@ def active_set(      \
 
             return res
     else:
-        if ineq:
+        if mc > 0:
             #Inequality constrained problem
             print( 'Inequality constrained QP.' )
             pass
@@ -237,8 +232,8 @@ def active_set(      \
             print( 'Unconstrained QP.' )
 
             ## Solve via normal equations
-            x_opt = ucqpsolver( H, g )
-            X = matrix( [ x_0.T, x_opt.T ] )
+            x_k = ucqpsolver( H, g )
+            X = matrix( [ x_k.T ] )
 
             ## Finish timing
             cpu_time = time.process_time() - cpu_time_start
@@ -265,10 +260,6 @@ def active_set(      \
     x_k = x_0
     w_k = w_0
     eps = 1e-13
-
-    _, me = A.size
-    _, mc = C.size
-    #...
 
     ## Storage initialisation
     X = matrix( x_k.T     )
@@ -310,7 +301,7 @@ def active_set(      \
         ## Check if current point is optimal
         if norm(p_k)[0] < eps:
             ## Lambda_k satisfies 16.42 from KKT solution
-            if min(lambda_k[ma:]) >= 0.0:
+            if min(matrix([0.0,lambda_k[ma:]])) >= 0.0:
                 ## Optimal solution found
                 converged  = True
                 if len(lambda_k[ma:]) == 0:

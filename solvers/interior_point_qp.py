@@ -25,7 +25,7 @@ def kktsolver( H, g, A, b, ):
     ## Setup of KKT-system
     O   = matrix( 0.0, (m, m) )                # Zeros for KKT matrix
     KKT = matrix( [ [ H, A.T ], [ A, O ] ] ) # KKT matrix
-    res = matrix( [ g, b ] )                 # Right-hand side
+    res = matrix( [ g, -b ] )                 # Right-hand side
     I   = matrix( range(n+m) )                 # Identity for LDL
 
     ## LDL-decomposition
@@ -69,30 +69,29 @@ def ucqpsolver( H, g, ):
 ############################################################################
 def type_checking( H, g, A, b, C, d, x_0, y_0, z_0, s_0 ):
     try:
-        H    = matrix(H)
-        n, _ = H.size
-
-        g   = matrix(g)
+        H = matrix(H)
+        g = matrix(g)
+        n = g.size[0]
     except:
         print( 'System matrices are not properly defined.' )
 
     try:
-        A = matrix(A)
-        _, ma = A.size
-        b = matrix(b)
+        A  = matrix(A)
+        b  = matrix(b)
+        ma = b.size[0]
     except:
-        A = matrix( 0.0, (n,0) )
+        A  = matrix( 0.0, (n,0) )
+        b  = matrix( 0.0, (0,1) )
         ma = 0
-        b = matrix( 0.0, (0,1) )
 
     try:
-        C = matrix(C)
-        _, mc = C.size
-        d = matrix(d)
+        C  = matrix(C)
+        d  = matrix(d)
+        mc = d.size[0]
     except:
-        C = matrix( 0.0, (n,0) )
+        C  = matrix( 0.0, (n,0) )
+        d  = matrix( 0.0, (0,1) )
         mc = 0
-        d = matrix( 0.0, (0,1) )
 
     try:
         x_0 = matrix( x_0 )
@@ -205,8 +204,8 @@ def interior_point( \
 
             ## Solve via KKT system
             x, y = kktsolver( H, g, A, b )
-            X = matrix( [ x_0.T, x.T ] )
-            Y = matrix( [ y_0.T, y.T ] )
+            X = matrix( [ x.T ] )
+            Y = matrix( [ y.T ] )
 
             ## Finish timing
             cpu_time = time.process_time() - cpu_time_start
@@ -230,6 +229,7 @@ def interior_point( \
 
             return res
     else:
+        print( mc )
         if mc > 0:
             #Inequality constrained problem
             print( 'Inequality constrained QP.' )
@@ -240,7 +240,7 @@ def interior_point( \
 
             ## Solve via normal equations
             x = ucqpsolver( H, g )
-            X = matrix( [ x_0.T, x.T ] )
+            X = matrix( [ x.T ] )
 
             ## Finish timing
             cpu_time = time.process_time() - cpu_time_start
