@@ -41,14 +41,14 @@ def driver( H, g, A=None, b=None, C=None, d=None ):
     Ny = 500
 
     ## Define x-region
-    x_min, x_max =  0, 5
+    x_min, x_max =  -1, 5
     x_int  = x_max-x_min
     x_step = x_int/Nx
     x = matrix( np.arange( x_min, x_max+x_step, x_step ) )
     nx, _ = x.size
 
     ## Define y-region
-    y_min, y_max =  0, 6
+    y_min, y_max =  -1, 4
     y_int = y_max-y_min
     y_step = y_int/Ny
     y = matrix( np.arange( y_min, y_max+y_step, y_step ) )
