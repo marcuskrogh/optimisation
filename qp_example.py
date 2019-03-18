@@ -62,7 +62,7 @@ def main():
     ax.plot( res_ip['X'][:,0], res_ip['X'][:,1], 'r2-', markersize=20 )
     ax.plot( res_as['X'][:,0], res_as['X'][:,1], 'b3-', markersize=20 )
 
-    plt.savefig( 'unconstrained_qp.pdf' )
+    plt.savefig( 'unconstrained_qp.png', dpi=600 )
     plt.show()
 
 
@@ -103,8 +103,9 @@ def main():
     ax.plot( res_ip['X'][:,0], res_ip['X'][:,1], 'r2-', markersize=20 )
     ax.plot( res_as['X'][:,0], res_as['X'][:,1], 'b3-', markersize=20 )
 
-    plt.savefig( 'equality_qp.pdf' )
+    plt.savefig( 'equality_qp.png', dpi=600 )
     plt.show()
+    plt.close()
 
 
     ########################################################################
@@ -143,28 +144,32 @@ def main():
     ax.plot( res_ip['X'][:,0], res_ip['X'][:,1], 'r2-', markersize=20 )
     ax.plot( res_as['X'][:,0], res_as['X'][:,1], 'b3-', markersize=20 )
 
-    plt.savefig( 'inequality_qp.pdf' )
+    plt.savefig( 'inequality_qp.png', dpi=600 )
     plt.show()
+    plt.close()
 
 
     ########################################################################
     ################ Inequality-Equality Constrained Example ###############
     ########################################################################
+    A = C[:,1]
+    b = matrix(d[1])
+    C_ = matrix( [ [C[:,0]], [C[:,2:]] ] )
+    d_ = matrix( [  d[0]   ,  d[2:]    ] )
+
     ## Visualisation of QP with constraints
-    fig, ax = driver(H, g, C[:,0], d[0], C[:,1:], d[1:] )
+    fig, ax = driver(H, g, A, b, C_, d_ )
 
     ## Solution via cvxopt
     print( '------------------------' )
-    x_opt_cvxopt = qp( H, g, -C[:,1:].T, -d[1:], \
-                       C[:,0].T, matrix(d[0]) )['x']
+    x_opt_cvxopt = qp( H, g, -C_.T, -d_, A.T, b )['x']
     print( 'C V X O P T solution:              \n', x_opt_cvxopt )
     print( '------------------------' )
     print()
 
     ## Solution via interior point algorithm
     print( '------------------------' )
-    res_ip = interior_point( H, g, A=C[:,0], b=d[0], C=C[:,1:], d=d[1:], \
-                             x_0=[1.0,1.0] )
+    res_ip = interior_point( H, g, A=A, b=b, C=C_, d=d_, x_0=[1.0,1.0] )
     print( 'Custom interior point solution:    \n', res_ip['x']  )
     print( 'Iterations: %d     ' % res_ip['N']        )
     print( 'CPU-time:   %.2f ms' % (res_ip['T']*1000) )
@@ -173,8 +178,7 @@ def main():
 
     ## Solution via custom algorithm - Primal active set
     print( '------------------------' )
-    res_as = active_set( H, g, A=C[:,0], b=d[0], C=C[:,1:], d=d[1:], \
-                         x_0=[1.0,1.5], w_0=[] )
+    res_as = active_set( H, g, A=A, b=b, C=C_, d=d_, x_0=[1.0,1.5], w_0=[] )
     print( 'Custom primal active set solution: \n', res_as['x']  )
     print( 'Iterations: %d     ' % res_as['N']        )
     print( 'CPU-time:   %.2f ms' % (res_as['T']*1000) )
@@ -186,8 +190,9 @@ def main():
     ax.plot( res_ip['X'][:,0], res_ip['X'][:,1], 'r2-', markersize=20 )
     ax.plot( res_as['X'][:,0], res_as['X'][:,1], 'b3-', markersize=20 )
 
-    plt.savefig( 'inequality_equality_qp.pdf' )
+    plt.savefig( 'inequality_equality_qp.png', dpi=600 )
     plt.show()
+    plt.close()
 
 
 ## Execution
