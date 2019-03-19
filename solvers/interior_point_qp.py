@@ -16,6 +16,26 @@ import time
 
 
 ############################################################################
+########################## Unconstrained QP solver #########################
+############################################################################
+def ucqpsolver( H, g, ):
+    L = +H
+    x = +(-g)
+
+    ## Cholesky-decomposition
+    cvxopt.lapack.potrf( L    )
+
+    ## Solve linear system of equation via Cholesky-decomposition
+    cvxopt.lapack.potrs( L, x )
+
+    ## Return statement
+    return x
+############################################################################
+############################################################################
+############################################################################
+
+
+############################################################################
 ################################# KKT solver ###############################
 ############################################################################
 def kktsolver( H, g, A, b, ):
@@ -45,26 +65,6 @@ def kktsolver( H, g, A, b, ):
 
 
 ############################################################################
-########################## Unconstrained QP solver #########################
-############################################################################
-def ucqpsolver( H, g, ):
-    L = +H
-    x = +(-g)
-
-    ## Cholesky-decomposition
-    cvxopt.lapack.potrf( L    )
-
-    ## Solve linear system of equation via Cholesky-decomposition
-    cvxopt.lapack.potrs( L, x )
-
-    ## Return statement
-    return x
-############################################################################
-############################################################################
-############################################################################
-
-
-############################################################################
 ############################### Type checking ##############################
 ############################################################################
 def type_checking( H, g, A, b, C, d, x_0, y_0, z_0, s_0 ):
@@ -73,7 +73,7 @@ def type_checking( H, g, A, b, C, d, x_0, y_0, z_0, s_0 ):
         g = matrix(g)
         n = g.size[0]
     except:
-        print( 'System matrices are not properly defined.' )
+        print( 'InputError: System is not properly defined.' )
 
     try:
         A  = matrix(A)
@@ -123,7 +123,7 @@ def type_checking( H, g, A, b, C, d, x_0, y_0, z_0, s_0 ):
 ############################################################################
 ########################### Interior Point Method ##########################
 ############################################################################
-def interior_point( \
+def interior_point_qp( \
     ## System matrices
     H, g, \
     ## Equality constraint matrices
@@ -138,47 +138,77 @@ def interior_point( \
 ############################################################################
 ### Primal-Dual Predictor-Corrector Interior Point Method for Convex QPs ###
 ############################################################################
-
     Description:
-        The method solves the convex constrained quadratic programmes
-        of the form:
+        Primal-dual predictor-corrector interior-point method for solving
+        convex constrained quadratic programmes in the form:
 
             min     1/2 x' H x + g' x
              x
             s.t.    A' x == b
                     C' x >= d
+############################################################################
 
-        given system matrices and some set of initial guesses.
 
+############################################################################
+        If the input is an unconstrained quadratic programme:
+
+            min     1/2 x' H x + g' x
+             x
+
+        the solution is directly computed by solving the equation
+
+            H * x = -g
+############################################################################
+
+
+############################################################################
+        If the input is an equality constrained quadratic programme:
+
+            min     1/2 x' H x + g' x
+             x
+            s.t.    A' x == b
+
+        the solution is directly computed via the Karush-Kuhn-Tucker (KKT)
+        conditions. The solution is obtained by solving the KKT system
+
+            [  H  -A ] [ x ]    [ -g ]
+            [ -A'  0 ] [ y ] == [ -b ]
+############################################################################
+
+
+############################################################################
     Inputs:
         H           ->      Quadratic objective matrix      |   n  x n
         g           ->      Linear objective vector         |   n  x 1
-        A           ->      Equality constraint matrix      |   n  x me
-        b           ->      Equality constraint vector      |   me x 1
-        C           ->      Inequality constraint matrix    |   n  x mi
-        d           ->      Inequality constraint vector    |   mi x 1
+        A           ->      Equality constraint matrix      |   n  x ma
+        b           ->      Equality constraint vector      |   ma x 1
+        C           ->      Inequality constraint matrix    |   n  x mc
+        d           ->      Inequality constraint vector    |   mc x 1
         x_0         ->      Initial guess of x              |   n  x 1
         y_0         ->      Initial guess of y              |   n  x 1
         z_0         ->      Initial guess of z              |   n  x 1
         s_0         ->      Initial guess of s              |   n  x 1
+        eta         ->      Step length                     |   float
+        tol         ->      Tolerance of optimality         |   float
         it_max      ->      Maximum allowed iterations      |   integer
 
     Outputs:
         res         ->      Result dictionary
             Optimal Variables:
-                x   ->      State variables                 | n  x 1
-                y   ->      Lagrange multiplier (Eq)        | ma x 1
-                z   ->      Lagrange multiplier (Ineq)      | mc x 1
-                s   ->      Slack variables (Ineq)          | mc x 1
+                x   ->      State variables                 |   n  x 1
+                y   ->      Lagrange multiplier (Eq.)       |   ma x 1
+                z   ->      Lagrange multiplier (In.)       |   mc x 1
+                s   ->      Slack variables     (In.)       |   mc x 1
             Iteration data:
-                X   ->      State variables                 | N  x n
-                Y   ->      Lagrange multiplier (Eq)        | N  x ma
-                Z   ->      Lagrange multiplier (Ineq)      | N  x mc
-                S   ->      Slack variables (Ineq)          | N  x mc
+                X   ->      State variables                 |   N  x n
+                Y   ->      Lagrange multiplier (Eq.)       |   N  x ma
+                Z   ->      Lagrange multiplier (In.)       |   N  x mc
+                S   ->      Slack variables     (In.)       |   N  x mc
             Congergence information:
-                converged   ->  Did the algorithm converge  | boolean
-                N           ->  Number of iterations        | integer
-                T           ->  Time used                   | Seconds
+                converged   ->  Did the algorithm converge  |   boolean
+                N           ->  Number of iterations        |   integer
+                T           ->  Time used                   |   ms
+############################################################################
     """
     ## Start timing
     cpu_time_start = time.process_time()

@@ -10,7 +10,7 @@ from visualisation.qp_plot        import driver
 
 ## QP Solver - primal active set
 from solvers import active_set
-from solvers import interior_point
+from solvers import interior_point_qp as interior_point
 
 ## Pyplot for visualisation
 import matplotlib.pyplot as plt

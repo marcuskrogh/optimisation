@@ -10,7 +10,7 @@ from visualisation.lp_plot   import driver
 
 
 ## Import custom LP solver
-from solvers import interior_point_lp
+from solvers import interior_point_lp as interior_point
 
 ## Pyplot for visualisation
 import matplotlib.pyplot as plt
@@ -22,7 +22,7 @@ import matplotlib.pyplot as plt
 def main():
     ## Define problem size
     n = 2
-    m = 1
+    m = 2
 
     ## Generate problem
     g, A, b, x_opt, _, _ = generate_lp( n, m )
@@ -33,10 +33,7 @@ def main():
     fig, ax = driver( g, A, b, C, d )
 
     ## Compute solution
-    res = interior_point_lp( g, A, b, matrix( 1.0, x_opt.size ) )
-
-    ## Compare solution to optimal point
-    print( (x_opt-res['x']).T*(x_opt-res['x'])/x_opt.size[0] )
+    res = interior_point( g, A, b, matrix( 1.0, x_opt.size ) )
 
     ## Plot iteration sequence
     ax.plot( x_opt[0]     , x_opt[1]     , 'k2' , markersize=20 )

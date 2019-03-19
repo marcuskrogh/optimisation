@@ -23,7 +23,7 @@ def type_checking( g, A, b, x_0 ):
         g = matrix(g)
         n = g.size[0]
     except:
-        print( 'System matrices are not properly defined.' )
+        print( 'InputError: System is not properly defined.' )
 
     try:
         A  = matrix(A)
@@ -59,44 +59,46 @@ def interior_point_lp( \
     eta=0.99, tol=1e-9, it_max=100, ):
     """
 ############################################################################
-### Primal-Dual Predictor-Corrector Interior Point Method for Convex QPs ###
+####### Primal-Dual Predictor-Corrector Interior Point Method for LPs ######
 ############################################################################
-
     Description:
-        The method solves the constrained linear programmes
-        of the form:
+        Primal-dual predictor-corrector interior-point method for solving
+        standard form linear programmes:
 
             min     g' x
              x
             s.t.    A' x == b
-                    C' x >= d
+                       x >= 0
+############################################################################
 
-        given system matrices and some set of initial guesses.
 
+############################################################################
     Inputs:
         g           ->      Linear objective vector         |   n  x 1
-        A           ->      Equality constraint matrix      |   n  x me
-        b           ->      Equality constraint vector      |   me x 1
-        C           ->      Inequality constraint matrix    |   n  x mi
-        d           ->      Inequality constraint vector    |   mi x 1
+        A           ->      Equality constraint matrix      |   n  x ma
+        b           ->      Equality constraint vector      |   ma x 1
         x_0         ->      Initial guess of x              |   n  x 1
+        eta         ->      Step length                     |   float
+        tol         ->      Tolerance of optimality         |   float
         it_max      ->      Maximum allowed iterations      |   integer
 
     Outputs:
         res         ->      Result dictionary
             Optimal Variables:
-                x   ->      State variables                 | n  x 1
-                y   ->      Lagrange multiplier (Eq)        | ma x 1
-                z   ->      Lagrange multiplier (Ineq)      | mc x 1
+                x   ->      State variables                 |   n  x 1
+                y   ->      Lagrange multiplier (Eq.)       |   ma x 1
+                z   ->      Lagrange multiplier (In.)       |   n  x 1
+                mu  ->      Duality gap                     |   float
             Iteration data:
-                X   ->      State variables                 | N  x n
-                Y   ->      Lagrange multiplier (Eq)        | N  x ma
-                Z   ->      Lagrange multiplier (Ineq)      | N  x mc
-                S   ->      Slack variables (Ineq)          | N  x mc
+                X   ->      State variables                 |   N  x n
+                Y   ->      Lagrange multiplier (Eq)        |   N  x ma
+                Z   ->      Lagrange multiplier (Ineq)      |   N  x n
+                Mu  ->      Duality gap                     |   N  x 1
             Congergence information:
-                converged   ->  Did the algorithm converge  | boolean
-                N           ->  Number of iterations        | integer
-                T           ->  Time used                   | Seconds
+                converged   ->  Did the algorithm converge  |   boolean
+                N           ->  Number of iterations        |   integer
+                T           ->  Time used                   |   ms
+############################################################################
     """
     ## Start timing
     cpu_time_start = time.process_time()
@@ -108,31 +110,12 @@ def interior_point_lp( \
     g, A, b, x_0, n, ma = \
         type_checking( g, A, b, x_0 )
 
-
-    """
     ## Check problem type
     if ma > 0:
-        if mc > 0:
-            #Full problem
-            print( 'Equality-inequality constrained QP.' )
-            pass
-        else:
-            #Equality constrained problem
-            print( 'Equality constrained QP. ' )
-            pass
+        pass
     else:
-        print( mc )
-        if mc > 0:
-            #Inequality constrained problem
-            print( 'Inequality constrained QP.' )
-            pass
-        else:
-            #Unconstrained problem
-            print( 'Unconstrained QP.' )
-            print( 'Problem is infeasible...' )
-            return False
-    """
-
+        print( 'Problem is unconstrained.' )
+        return False
 
     ## Initialisation
     x = x_0

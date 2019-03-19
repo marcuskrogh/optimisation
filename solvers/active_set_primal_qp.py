@@ -9,6 +9,27 @@ import numpy as np
 ## Time
 import time
 
+
+############################################################################
+########################## Unconstrained QP solver #########################
+############################################################################
+def ucqpsolver( H, g, ):
+    L = +H
+    x = +(-g)
+
+    ## Cholesky-decomposition
+    cvxopt.lapack.potrf( L    )
+
+    ## Solve linear system of equation via Cholesky-decomposition
+    cvxopt.lapack.potrs( L, x )
+
+    ## Return statement
+    return x
+############################################################################
+############################################################################
+############################################################################
+
+
 ############################################################################
 ################################# KKT solver ###############################
 ############################################################################
@@ -39,26 +60,6 @@ def kktsolver( H, g, A, b, ):
 
 
 ############################################################################
-########################## Unconstrained QP solver #########################
-############################################################################
-def ucqpsolver( H, g, ):
-    L = +H
-    x = +(-g)
-
-    ## Cholesky-decomposition
-    cvxopt.lapack.potrf( L    )
-
-    ## Solve linear system of equation via Cholesky-decomposition
-    cvxopt.lapack.potrs( L, x )
-
-    ## Return statement
-    return x
-############################################################################
-############################################################################
-############################################################################
-
-
-############################################################################
 ############################ Euclidean distance ############################
 ############################################################################
 def norm( x, ):
@@ -81,7 +82,7 @@ def type_checking( H, g, A, b, C, d, x_0, w_0 ):
         g = matrix(g)
         n = g.size[0]
     except:
-        print( 'System matrices are not properly defined.' )
+        print( 'InputError: System is not properly defined.' )
 
     try:
         A  = matrix(A)
@@ -120,7 +121,7 @@ def type_checking( H, g, A, b, C, d, x_0, w_0 ):
 ############################################################################
 ############### Active Set Algorithm for Quadratic Programmes ##############
 ############################################################################
-def active_set(      \
+def active_set_qp(      \
     ## Objective matrices
     H, g,               \
     ## Equality constraint matrices
@@ -135,19 +136,42 @@ def active_set(      \
 ############################################################################
 ################## Primal Active Set Method for Convex QPs #################
 ############################################################################
-
     Description:
-        The function solves the inequality constraint quadratic programme
-        of the form:
+        Primal active set method for solving convex constrained
+        quadratic programmes in the form:
 
-            min  1/2 x' H x + g' x
-            s.t. A' x == b
-                 C' x >= d
+            min     1/2 x' H x + g' x
+             x
+            s.t.    A' x == b
+                    C' x >= d
+############################################################################
+        If the input is an unconstrained quadratic programme:
 
-        By treating a subset of inequality constraints as equality
-        constriants, then iterating through subsets until the optimal
-        solution is found.
+            min     1/2 x' H x + g' x
+             x
 
+        the solution is directly computed by solving the equation
+
+            H * x = -g
+############################################################################
+
+
+############################################################################
+        If the input is an equality constrained quadratic programme:
+
+            min     1/2 x' H x + g' x
+             x
+            s.t.    A' x == b
+
+        the solution is directly computed via the Karush-Kuhn-Tucker (KKT)
+        conditions. The solution is obtained by solving the KKT system
+
+            [  H  -A ] [ x ]    [ -g ]
+            [ -A'  0 ] [ y ] == [ -b ]
+############################################################################
+
+
+############################################################################
     Inputs:
         H           ->      Quadratic objective matrix      |   n  x n
         g           ->      Linear objective vector         |   n  x 1
@@ -158,7 +182,6 @@ def active_set(      \
         x_0         ->      Initial guess on x              |   n  x 1
         w_0         ->      Initial guess on working set    |   Indecies
         it_max      ->      Maximum allowed iterations      |   integer
-            Default: 100
         kktsolver_  ->      Solver for KKT system
             Default: KKT solver using LDL-decomposition.
             The KKT solver is chosen as an input, such that the solver
@@ -168,17 +191,18 @@ def active_set(      \
     Outputs:
         res         ->      Result dictionary
             Optimal Variables:
-                x   ->      State variables                 | n  x 1
-                y   ->      Lagrange multiplier (Eq)        | ma x 1
-                w   ->      Initial guess on working set    | Indecies
+                x   ->      State variables                 |   n  x 1
+                y   ->      Lagrange multiplier (Eq)        |   ma x 1
+                w   ->      Initial guess on working set    |   Indecies
             Iteration data:
-                X   ->      State variables                 | N  x n
-                Y   ->      Lagrange multiplier (Eq)        | N  x ma
-                W   ->      Working set                     | N  x n_w(k)
+                X   ->      State variables                 |   N  x n
+                Y   ->      Lagrange multiplier (Eq)        |   N  x ma
+                W   ->      Working set                     |   N  x n_w(k)
             Congergence information:
-                converged   ->  Convergence information     | boolean
-                N           ->  Number of iterations        | integer
-                T           ->  Time used                   | Seconds
+                converged   ->  Convergence information     |   boolean
+                N           ->  Number of iterations        |   integer
+                T           ->  Time used                   |   ms
+############################################################################
     """
     ## Start timing
     cpu_time_start = time.process_time()
