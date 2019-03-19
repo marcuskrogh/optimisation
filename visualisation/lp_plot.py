@@ -3,26 +3,46 @@ from cvxopt         import matrix
 import numpy as np
 
 ## Import test function
-from visualisation.lp_function                import objective, constraints
-from visualisation.linear_constraints_contour import linear_constraints_contour
+from visualisation  import lc_contour
 
 ## Main function
-def driver():
-    ## Define LP
-    g    = objective()
-    A, b = constraints()
+def driver( g, A=None, b=None, C=None, d=None ):
+    try:
+        g = matrix(g)
+        n = g.size[0]
+    except:
+        print( 'Error: System matrices not properly defined.' )
+        return None, None
+
+    try:
+        A = matrix(A)
+        b = matrix(b)
+        _, ma = A.size
+    except:
+        A = matrix( 0.0, (n,0) )
+        b = matrix( 0.0, (0,1) )
+        ma = 0
+
+    try:
+        C = matrix(C)
+        d = matrix(d)
+        _, mc = C.size
+    except:
+        C = matrix( 0.0, (n,0) )
+        d = matrix( 0.0, (0,1) )
+        mc = 0
 
     ## Grid definition
     N = 100
 
     ## Define x-region
-    x_min, x_max =  0, 5
+    x_min, x_max = -2, 2
     x_int  = x_max-x_min
     x_step = x_int/N
     x = matrix(np.arange( x_min, x_max+x_step, x_step ))
 
     ## Define y-region
-    y_min, y_max =  0, 6
+    y_min, y_max = -2, 2
     y_int = y_max-y_min
     y_step = y_int/N
     y = matrix(np.arange( y_min, y_max+y_step, y_step ))
@@ -36,6 +56,6 @@ def driver():
     Z = g[0]*X + g[1]*Y
 
     ## Plot linear constraints in contour plot
-    fig, ax = linear_constraints_contour( X, Y, Z, A, b, 25, )
+    fig, ax = lc_contour( X, Y, Z, A, b, C, d, 25, )
 
     return fig, ax

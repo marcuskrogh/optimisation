@@ -1,15 +1,16 @@
 ## CVXOPT import
 import cvxopt
-from cvxopt                       import matrix
+from cvxopt                       import matrix, spmatrix
 from cvxopt.solvers               import lp, options
 options['show_progress'] = False
 
-## QP related functions
-from visualisation.lp_function    import objective, constraints
-from visualisation.lp_plot        import driver
+## Random LP problems and visualisation
+from test_problems.random_lp import generate_lp
+from visualisation.lp_plot   import driver
 
-## Possible custom LP solver
-#import custom_lp_solver
+
+## Import custom LP solver
+from solvers import interior_point_lp
 
 ## Pyplot for visualisation
 import matplotlib.pyplot as plt
@@ -19,31 +20,27 @@ import matplotlib.pyplot as plt
 ################################ QP Example ################################
 ############################################################################
 def main():
-    ## Initialisation of QP (Inequality constrained)
-    g    = objective()
-    C, d = constraints()
+    ## Define problem size
+    n = 2
+    m = 1
 
-    ## Visualisation of QP with constraints
-    fig, ax = driver()
+    ## Generate problem
+    g, A, b, x_opt, _, _ = generate_lp( n, m )
+    C = matrix(spmatrix( 1.0, range(n), range(n) ))
+    d = matrix( 0.0, (n,1) )
 
-    ## Solution via CVXOPT
-    x_opt_cvxopt = lp( g, -C.T, -d )['x']
-    print( 'Optimal solution (from CVXOpt): \n', x_opt_cvxopt )
+    ## Plot problem
+    fig, ax = driver( g, A, b, C, d )
 
-    """
-    ## Solution via custom algorithm - Primal active set
-    x_opt, lambda_opt, W_opt, X = custom_lp_solver( g, C=C, d=d, \
-        x_0=[3.5,2.5], W_0=[4] )
-    print( 'Optimal solution (from Primal Active Set): ' )
-    print( 'x:                  \n', x_opt      )
-    #print( 'lambda:             \n', lambda_opt )
-    #print( 'Working set:        \n', W_opt      )
-    #print( 'Iteration sequence: \n', X          )
-    """
+    ## Compute solution
+    res = interior_point_lp( g, A, b, matrix( 1.0, x_opt.size ) )
 
-    ## Visualisation of iteration sequence and optimal point
-    ax.plot( x_opt_cvxopt[0], x_opt_cvxopt[1], 'k2' , markersize=10 )
-    #ax.plot( X[:,0]         , X[:,1]         , 'r1-', markersize=10 )
+    ## Compare solution to optimal point
+    print( (x_opt-res['x']).T*(x_opt-res['x'])/x_opt.size[0] )
+
+    ## Plot iteration sequence
+    ax.plot( x_opt[0]     , x_opt[1]     , 'k2' , markersize=20 )
+    ax.plot( res['X'][:,0], res['X'][:,1], 'r-1', markersize=20 )
     plt.show()
 
 
