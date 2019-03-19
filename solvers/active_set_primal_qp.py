@@ -176,7 +176,7 @@ def active_set(      \
                 Y   ->      Lagrange multiplier (Eq)        | N  x ma
                 W   ->      Working set                     | N  x n_w(k)
             Congergence information:
-                converged   ->  Did the algorithm converge  | boolean
+                converged   ->  Convergence information     | boolean
                 N           ->  Number of iterations        | integer
                 T           ->  Time used                   | Seconds
     """

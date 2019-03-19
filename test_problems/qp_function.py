@@ -5,8 +5,8 @@ from cvxopt         import matrix
 def objective( ):
     ## System matrix and vector
     H = matrix( [
-        [ 2.0, 0.0, ],
-        [ 0.0, 2.0, ],
+        [  2.0,  0.0, ],
+        [  0.0,  2.0, ],
         ] )
 
     g = matrix( [ -2.0, -5.0 ] )

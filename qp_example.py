@@ -19,15 +19,21 @@ import matplotlib.pyplot as plt
 ############################################################################
 ################################ QP Example ################################
 ############################################################################
-def main():
+def generate_qp():
     ## Initialisation of QP (Inequality constrained)
     H, g = objective()
     C, d = constraints()
 
+    return H, g, C, d
 
-    ########################################################################
-    ######################### Unconstrained Example ########################
-    ########################################################################
+
+############################################################################
+########################### Unconstrained Example ##########################
+############################################################################
+def unconstrained_qp():
+    ## Generate QP
+    H, g, _, _ = generate_qp()
+
     ## Visualisation of QP with constraints
     fig, ax = driver( H, g )
 
@@ -62,13 +68,17 @@ def main():
     ax.plot( res_ip['X'][:,0], res_ip['X'][:,1], 'r2-', markersize=20 )
     ax.plot( res_as['X'][:,0], res_as['X'][:,1], 'b3-', markersize=20 )
 
-    plt.savefig( 'unconstrained_qp.png', dpi=600 )
+    plt.savefig( 'figures/unconstrained_qp.png', dpi=600 )
     plt.show()
 
 
-    ########################################################################
-    ##################### Equality Constrained Example #####################
-    ########################################################################
+############################################################################
+####################### Equality Constrained Example #######################
+############################################################################
+def equality_constrained_qp():
+    ## Generate QP
+    H, g, C, d = generate_qp()
+
     ## Visualisation of QP with constraints
     fig, ax = driver( H, g, C[:,3], d[3] )
 
@@ -103,14 +113,18 @@ def main():
     ax.plot( res_ip['X'][:,0], res_ip['X'][:,1], 'r2-', markersize=20 )
     ax.plot( res_as['X'][:,0], res_as['X'][:,1], 'b3-', markersize=20 )
 
-    plt.savefig( 'equality_qp.png', dpi=600 )
+    plt.savefig( 'figures/equality_qp.png', dpi=600 )
     plt.show()
     plt.close()
 
 
-    ########################################################################
-    #################### Inequality Constrained Example ####################
-    ########################################################################
+############################################################################
+###################### Inequality Constrained Example ######################
+############################################################################
+def inequality_constrained_qp():
+    ## Generate QP
+    H, g, C, d = generate_qp()
+
     ## Visualisation of QP with constraints
     fig, ax = driver( H, g, C=C, d=d )
 
@@ -123,7 +137,7 @@ def main():
 
     ## Solution via interior point algorithm
     print( '------------------------' )
-    res_ip = interior_point( H, g, C=C, d=d, x_0=[1,1] )
+    res_ip = interior_point( H, g, C=C, d=d, x_0=[2.0,0.0] )
     print( 'Custom interior point solution:    \n', res_ip['x']  )
     print( 'Iterations: %d     ' % res_ip['N']        )
     print( 'CPU-time:   %.2f ms' % (res_ip['T']*1000) )
@@ -132,7 +146,7 @@ def main():
 
     ## Solution via custom algorithm - Primal active set
     print( '------------------------' )
-    res_as = active_set( H, g, C=C, d=d, x_0=[1.0,1.0], w_0=[] )
+    res_as = active_set( H, g, C=C, d=d, x_0=[2.0,0.0], w_0=[2,4] )
     print( 'Custom primal active set solution: \n', res_as['x']  )
     print( 'Iterations: %d     ' % res_as['N']        )
     print( 'CPU-time:   %.2f ms' % (res_as['T']*1000) )
@@ -144,14 +158,17 @@ def main():
     ax.plot( res_ip['X'][:,0], res_ip['X'][:,1], 'r2-', markersize=20 )
     ax.plot( res_as['X'][:,0], res_as['X'][:,1], 'b3-', markersize=20 )
 
-    plt.savefig( 'inequality_qp.png', dpi=600 )
+    plt.savefig( 'figures/inequality_qp.png', dpi=600 )
     plt.show()
     plt.close()
 
 
-    ########################################################################
-    ################ Inequality-Equality Constrained Example ###############
-    ########################################################################
+############################################################################
+################## Inequality-Equality Constrained Example #################
+############################################################################
+def inequality_equality_constrained_qp():
+    ## Generate QP
+    H, g, C, d = generate_qp()
     A = C[:,1]
     b = matrix(d[1])
     C_ = matrix( [ [C[:,0]], [C[:,2:]] ] )
@@ -178,7 +195,7 @@ def main():
 
     ## Solution via custom algorithm - Primal active set
     print( '------------------------' )
-    res_as = active_set( H, g, A=A, b=b, C=C_, d=d_, x_0=[1.0,1.5], w_0=[] )
+    res_as = active_set( H, g, A=A, b=b, C=C_, d=d_, x_0=[4.0,1.0], w_0=[3] )
     print( 'Custom primal active set solution: \n', res_as['x']  )
     print( 'Iterations: %d     ' % res_as['N']        )
     print( 'CPU-time:   %.2f ms' % (res_as['T']*1000) )
@@ -190,11 +207,16 @@ def main():
     ax.plot( res_ip['X'][:,0], res_ip['X'][:,1], 'r2-', markersize=20 )
     ax.plot( res_as['X'][:,0], res_as['X'][:,1], 'b3-', markersize=20 )
 
-    plt.savefig( 'inequality_equality_qp.png', dpi=600 )
+    plt.savefig( 'figures/inequality_equality_qp.png', dpi=600 )
     plt.show()
     plt.close()
 
 
-## Execution
+############################################################################
+################################# Execution ################################
+############################################################################
 if __name__ == '__main__':
-    main()
+    unconstrained_qp()
+    equality_constrained_qp()
+    inequality_constrained_qp()
+    inequality_equality_constrained_qp()
