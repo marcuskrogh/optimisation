@@ -56,7 +56,7 @@ def interior_point_lp( \
     ## Initial guess(es)
     x_0=None,
     ## ALgirithm parameters
-    eta=0.99, tol=1e-9, it_max=100, ):
+    eta=0.995, tol=1e-9, it_max=100, ):
     """
 ############################################################################
 ####### Primal-Dual Predictor-Corrector Interior Point Method for LPs ######

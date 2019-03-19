@@ -9,7 +9,7 @@ from test_problems.qp_function    import objective, constraints
 from visualisation.qp_plot        import driver
 
 ## QP Solver - primal active set
-from solvers import active_set
+from solvers import active_set_qp     as active_set
 from solvers import interior_point_qp as interior_point
 
 ## Pyplot for visualisation
