@@ -36,13 +36,13 @@ def driver( g, A=None, b=None, C=None, d=None ):
     N = 100
 
     ## Define x-region
-    x_min, x_max = -2, 2
+    x_min, x_max = -0.5, 2.0
     x_int  = x_max-x_min
     x_step = x_int/N
     x = matrix(np.arange( x_min, x_max+x_step, x_step ))
 
     ## Define y-region
-    y_min, y_max = -2, 2
+    y_min, y_max = -0.5, 2.0
     y_int = y_max-y_min
     y_step = y_int/N
     y = matrix(np.arange( y_min, y_max+y_step, y_step ))

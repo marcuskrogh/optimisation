@@ -24,18 +24,16 @@ import matplotlib.pyplot as plt
 def main():
 
     ## Define problem size
-    n = 10
+    n = 2
     m = 2
 
     ## Generate problem
     g, A, b, x_opt, _, _ = generate_lp( n, m )
+    C = matrix( spmatrix( 1.0, range(n), range(n) ) ) # x >= 1
+    d = matrix( 0.0, (n,1) )                          # x >= 1
 
     ## Simplex algorithm
-    simplex( g, A, b, x_opt+1 )
-
-    """
-    C = matrix(spmatrix( 1.0, range(n), range(n) ))
-    d = matrix( 0.0, (n,1) )
+    simplex( g, A, b, [0] )
 
     ## Plot problem
     fig, ax = driver( g, A, b, C, d )
@@ -47,7 +45,6 @@ def main():
     ax.plot( x_opt[0]     , x_opt[1]     , 'k2' , markersize=20 )
     ax.plot( res['X'][:,0], res['X'][:,1], 'r-1', markersize=20 )
     plt.show()
-    """
 
 
 ## Execution

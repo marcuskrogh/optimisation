@@ -225,12 +225,12 @@ def interior_point_qp( \
     if ma > 0:
         if mc > 0:
             #Full problem
-            print( 'Equality-inequality constrained QP.' )
+            #print( 'Equality-inequality constrained QP.' )
             pass
         else:
             #Equality constrained problem
-            print( 'Equality constrained QP. ' )
-            print( 'Solving via KKT solver...' )
+            #print( 'Equality constrained QP. ' )
+            #print( 'Solving via KKT solver...' )
 
             ## Solve via KKT system
             x, y = kktsolver( H, g, A, b )
@@ -262,11 +262,11 @@ def interior_point_qp( \
         print( mc )
         if mc > 0:
             #Inequality constrained problem
-            print( 'Inequality constrained QP.' )
+            #print( 'Inequality constrained QP.' )
             pass
         else:
             #Unconstrained problem
-            print( 'Unconstrained QP.' )
+            #print( 'Unconstrained QP.' )
 
             ## Solve via normal equations
             x = ucqpsolver( H, g )
