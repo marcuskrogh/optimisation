@@ -44,16 +44,16 @@ def line_search( \
         [ np.array(abs(z)), np.array(tmp) ] ), axis=0 ) )
 
     ## Compute c=phi(0) and b=phi'(0)
-    h_xk = matrix(abs(c_eq))
-    g_xk = matrix([abs(min(0.0,c_in[i])) for i in range(c_in.size[0])])
+    h_xk   = matrix(abs(c_eq))
+    g_xk   = matrix([abs(min(0.0,c_in[i])) for i in range(c_in.size[0])])
     phi_0  = f       + mu_.T*h_xk + lambda_.T*g_xk
     dphi_0 = df.T*dx - mu_.T*h_xk - lambda_.T*g_xk
 
     ## Main loop
     alpha     = 1.0
     converged = False
-    it = 0
-    nargout = ['f','c']
+    it        = 0
+    nargout   = ['f','c']
     while (not converged) and it < it_max:
         ## Take step
         x_ = x + alpha*dx;
@@ -69,14 +69,20 @@ def line_search( \
 
         ##
         phi_alpha = f + mu_.T*h_xk + lambda_.T*g_xk
-        phi_tmp   = phi_0 + 0.1*dphi_0*alpha
+        phi_tmp   = phi_0 + 1e-1*dphi_0*alpha
         if phi_alpha[0] <= phi_tmp[0]:
             converged = True
         else:
-            a = ( phi_alpha - ( phi_0 + alpha*dphi_0 ) ) / ( alpha*alpha )
-            alpha_min = - dphi_0[0] / ( 2.0*a[0] )
-            #alpha = min( [ 0.9*alpha, max( [ alpha_min, 0.1*alpha ] ) ] )
+            """
+            ## Quadratic approximation linesearch
+            a = ( phi_alpha - phi_0 - dphi_0*alpha ) /alpha**2
+            print( a )
+            alpha_min = div( -dphi_0, 2.0*a )
+            alpha = min( [ 0.9*alpha, max( [ alpha_min[0], 0.1*alpha ] ) ] )
+            """
+            ## Backtracking linesearch
             alpha *= 0.95
+
 
         ## Iterate
         it += 1
@@ -194,7 +200,7 @@ def sqp( \
     tol=1e-8, it_max=100, **kwargs):
     """
 ############################################################################
-############ Non-Linear Sequantial Quadratic Programming Solver ############
+################# Sequantial Quadratic Programming Solver ##################
 ############################################################################
     Description:
 
@@ -228,10 +234,11 @@ def sqp( \
         ( max( abs( c_eq ) ) < tol )
 
     ## Storage of relevant data
-    X  = matrix( x.T )
-    Y  = matrix( y.T )
-    Z  = matrix( z.T )
-    DL = matrix( max(abs(dL)) )
+    X     = matrix( x.T          )
+    Y     = matrix( y.T          )
+    Z     = matrix( z.T          )
+    DL    = matrix( max(abs(dL)) )
+    Alpha = matrix( 0.0, (0,1)   )
 
     ## Main loop
     mu_     = abs(y)
@@ -255,8 +262,8 @@ def sqp( \
             obj, eq_cons, in_cons,          \
             f, df, c_eq, c_in,              \
             y, z, x, dx, mu_, lambda_ )
-
         x += alpha*dx
+        #x += dx
 
         ## Re-evaluation objective and constraints
         f   , df   , _ = obj(     x, **kwargs )
@@ -274,10 +281,11 @@ def sqp( \
             ( max( abs( c_eq ) ) < tol )
 
         ## Store relevant data
-        X  = matrix( [ X, x.T ] )
-        Y  = matrix( [ Y, y.T ] )
-        Z  = matrix( [ Z, z.T ] )
-        DL = matrix( [ DL, max(abs(dL)) ] )
+        X     = matrix( [ X, x.T ]           )
+        Y     = matrix( [ Y, y.T ]           )
+        Z     = matrix( [ Z, z.T ]           )
+        DL    = matrix( [ DL, max(abs(dL)) ] )
+        Alpha = matrix( [ Alpha, alpha ]     )
 
         ## Iterate
         it += 1
@@ -304,6 +312,7 @@ def sqp( \
         'Y'         : Y,                            \
         'Z'         : Z,                            \
         'DL'        : DL,                           \
+        'Alpha'     : Alpha,                        \
         ## Convergence information
         'converged' : converged,                    \
         'N'         : it,                           \
